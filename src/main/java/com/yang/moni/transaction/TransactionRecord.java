@@ -36,6 +36,9 @@ public class TransactionRecord {
     @Column(name = "memo")
     private String memo;
 
+    @Column(name = "note")
+    private String note;
+
     @Column(name = "transaction_date", nullable = false)
     private LocalDate transactionDate;
 
@@ -67,5 +70,19 @@ public class TransactionRecord {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public void update(String transactionType, Category category, Long amount, String memo,
+                       LocalDate transactionDate, Long fromAssetId, Long toAssetId,
+                       Long paidByUserId, String note) {
+        this.transactionType = transactionType;
+        this.category = category;
+        this.amount = amount;
+        this.memo = memo;
+        this.transactionDate = transactionDate;
+        this.fromAssetId = fromAssetId;
+        this.toAssetId = toAssetId;
+        this.paidByUserId = paidByUserId;
+        this.note = note;
     }
 }

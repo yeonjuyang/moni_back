@@ -26,4 +26,20 @@ public class TransactionController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(transactionService.createTransaction(ledgerId, request));
     }
+
+    @PutMapping("/ledgers/{ledgerId}/transactions/{transactionId}")
+    public TransactionResponse updateTransaction(
+            @PathVariable Long ledgerId,
+            @PathVariable Long transactionId,
+            @RequestBody TransactionRequest request) {
+        return transactionService.updateTransaction(ledgerId, transactionId, request);
+    }
+
+    @DeleteMapping("/ledgers/{ledgerId}/transactions/{transactionId}")
+    public ResponseEntity<Void> deleteTransaction(
+            @PathVariable Long ledgerId,
+            @PathVariable Long transactionId) {
+        transactionService.deleteTransaction(ledgerId, transactionId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -11,5 +11,7 @@ public record TransactionRequest(
         @JsonFormat(pattern = "yyyy-MM-dd") LocalDate transactionDate,
         String categoryName,
         Long fromAssetId,
-        Long toAssetId
+        Long toAssetId,
+        Long paidByUserId,
+        String note
 ) {}

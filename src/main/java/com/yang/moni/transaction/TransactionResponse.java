@@ -10,5 +10,8 @@ public record TransactionResponse(
         Long amount,
         String transactionType,
         @JsonFormat(pattern = "yyyy-MM-dd") LocalDate transactionDate,
-        String categoryName
+        String categoryName,
+        Long paidByUserId,
+        String paidByUserNickname,
+        String note
 ) {}

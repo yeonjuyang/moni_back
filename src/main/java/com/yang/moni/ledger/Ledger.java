@@ -1,15 +1,16 @@
 package com.yang.moni.ledger;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "ledger")
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder
 public class Ledger {
 
     @Id
@@ -37,4 +38,17 @@ public class Ledger {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        active = true;
+    }
+
+    public void updateName(String name) {
+        this.ledgerName = name;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

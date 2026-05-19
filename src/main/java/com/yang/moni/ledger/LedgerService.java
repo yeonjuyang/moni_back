@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -16,21 +18,29 @@ import java.util.List;
 public class LedgerService {
 
     private final LedgerRepository ledgerRepository;
+    private final LedgerMemberRepository ledgerMemberRepository;
     private final CategoryRepository categoryRepository;
     private final AssetRepository assetRepository;
 
+    public List<LedgerResponse> getMyLedgers() {
+        List<Long> ledgerIds = ledgerMemberRepository.findByUserId(1L).stream() // TODO: JWT
+                .map(LedgerMember::getLedgerId)
+                .toList();
+        return ledgerRepository.findAllById(ledgerIds).stream()
+                .filter(Ledger::isActive)
+                .map(this::toResponse)
+                .toList();
+    }
+
     public LedgerResponse getLedger(Long ledgerId) {
-        Ledger ledger = ledgerRepository.findById(ledgerId)
-                .orElseThrow(() -> new RuntimeException("Ledger not found: " + ledgerId));
-        return new LedgerResponse(ledger.getLedgerId(), ledger.getLedgerName(), ledger.getLedgerType());
+        return toResponse(findActive(ledgerId));
     }
 
     @Transactional
     public LedgerResponse updateLedger(Long ledgerId, LedgerRequest request) {
-        Ledger ledger = ledgerRepository.findById(ledgerId)
-                .orElseThrow(() -> new RuntimeException("Ledger not found: " + ledgerId));
+        Ledger ledger = findActive(ledgerId);
         ledger.updateName(request.ledgerName());
-        return new LedgerResponse(ledger.getLedgerId(), ledger.getLedgerName(), ledger.getLedgerType());
+        return toResponse(ledger);
     }
 
     @Transactional
@@ -39,14 +49,67 @@ public class LedgerService {
         Ledger ledger = Ledger.builder()
                 .ledgerName(request.ledgerName())
                 .ledgerType(type)
-                .createdBy(1L) // TODO: replace with JWT claim
+                .createdBy(1L) // TODO: JWT
                 .build();
         Ledger saved = ledgerRepository.save(ledger);
+
+        ledgerMemberRepository.save(LedgerMember.builder()
+                .ledgerId(saved.getLedgerId())
+                .userId(1L) // TODO: JWT
+                .role("OWNER")
+                .build());
 
         createDefaultAssets(saved.getLedgerId());
         createDefaultCategories(saved.getLedgerId());
 
-        return new LedgerResponse(saved.getLedgerId(), saved.getLedgerName(), saved.getLedgerType());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deleteLedger(Long ledgerId) {
+        findActive(ledgerId).deactivate();
+    }
+
+    @Transactional
+    public LedgerResponse generateInviteCode(Long ledgerId) {
+        Ledger ledger = findActive(ledgerId);
+        ledger.updateInviteCode(createCode());
+        return toResponse(ledger);
+    }
+
+    @Transactional
+    public LedgerResponse joinLedger(String inviteCode) {
+        Ledger ledger = ledgerRepository.findByInviteCode(inviteCode)
+                .filter(Ledger::isActive)
+                .orElseThrow(() -> new NoSuchElementException("유효하지 않은 초대 코드입니다"));
+        Long userId = 1L; // TODO: JWT
+        if (!ledgerMemberRepository.existsByLedgerIdAndUserId(ledger.getLedgerId(), userId)) {
+            ledgerMemberRepository.save(LedgerMember.builder()
+                    .ledgerId(ledger.getLedgerId())
+                    .userId(userId)
+                    .role("MEMBER")
+                    .build());
+        }
+        return toResponse(ledger);
+    }
+
+    private Ledger findActive(Long ledgerId) {
+        return ledgerRepository.findById(ledgerId)
+                .orElseThrow(() -> new RuntimeException("Ledger not found: " + ledgerId));
+    }
+
+    private LedgerResponse toResponse(Ledger l) {
+        return new LedgerResponse(l.getLedgerId(), l.getLedgerName(), l.getLedgerType(), l.getInviteCode());
+    }
+
+    private String createCode() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 
     private void createDefaultAssets(Long ledgerId) {

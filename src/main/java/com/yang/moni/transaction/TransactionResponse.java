@@ -13,5 +13,7 @@ public record TransactionResponse(
         String categoryName,
         Long paidByUserId,
         String paidByUserNickname,
-        String note
+        String note,
+        Long fromAssetId,
+        Long toAssetId
 ) {}

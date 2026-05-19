@@ -51,4 +51,14 @@ public class Ledger {
         this.ledgerName = name;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateInviteCode(String code) {
+        this.inviteCode = code;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void deactivate() {
+        this.active = false;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

@@ -104,7 +104,9 @@ public class TransactionService {
                 t.getCategory() != null ? t.getCategory().getCategoryName() : null,
                 t.getPaidByUserId(),
                 nickname,
-                t.getNote()
+                t.getNote(),
+                t.getFromAssetId(),
+                t.getToAssetId()
         );
     }
 }

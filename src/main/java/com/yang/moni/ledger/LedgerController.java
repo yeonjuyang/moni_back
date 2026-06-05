@@ -41,6 +41,12 @@ public class LedgerController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/ledgers/{id}/me")
+    public ResponseEntity<LedgerResponse> updateMyNickname(@PathVariable Long id,
+                                                            @RequestBody LedgerNicknameRequest request) {
+        return ResponseEntity.ok(ledgerService.updateMyNickname(id, request.nickname()));
+    }
+
     @PostMapping("/ledgers/{id}/invite")
     public ResponseEntity<LedgerResponse> generateInviteCode(@PathVariable Long id) {
         return ResponseEntity.ok(ledgerService.generateInviteCode(id));

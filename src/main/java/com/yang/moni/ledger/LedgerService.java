@@ -98,8 +98,21 @@ public class LedgerService {
                 .orElseThrow(() -> new RuntimeException("Ledger not found: " + ledgerId));
     }
 
+    @Transactional
+    public LedgerResponse updateMyNickname(Long ledgerId, String nickname) {
+        LedgerMember member = ledgerMemberRepository
+                .findByLedgerIdAndUserId(ledgerId, 1L) // TODO: JWT
+                .orElseThrow(() -> new NoSuchElementException("가계부 멤버가 아닙니다"));
+        member.updateNickname(nickname.isBlank() ? null : nickname.trim());
+        return toResponse(findActive(ledgerId));
+    }
+
     private LedgerResponse toResponse(Ledger l) {
-        return new LedgerResponse(l.getLedgerId(), l.getLedgerName(), l.getLedgerType(), l.getInviteCode());
+        String myNickname = ledgerMemberRepository
+                .findByLedgerIdAndUserId(l.getLedgerId(), 1L) // TODO: JWT
+                .map(LedgerMember::getNickname)
+                .orElse(null);
+        return new LedgerResponse(l.getLedgerId(), l.getLedgerName(), l.getLedgerType(), l.getInviteCode(), myNickname);
     }
 
     private String createCode() {

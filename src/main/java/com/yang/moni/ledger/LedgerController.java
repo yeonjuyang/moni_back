@@ -1,5 +1,6 @@
 package com.yang.moni.ledger;
 
+import com.yang.moni.user.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,11 @@ public class LedgerController {
     @GetMapping("/ledgers")
     public ResponseEntity<List<LedgerResponse>> getMyLedgers() {
         return ResponseEntity.ok(ledgerService.getMyLedgers());
+    }
+
+    @GetMapping("/ledgers/{id}/members")
+    public ResponseEntity<List<UserResponse>> getLedgerMembers(@PathVariable Long id) {
+        return ResponseEntity.ok(ledgerService.getMembers(id));
     }
 
     @GetMapping("/ledgers/{id}")

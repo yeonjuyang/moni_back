@@ -4,13 +4,18 @@ import com.yang.moni.asset.Asset;
 import com.yang.moni.asset.AssetRepository;
 import com.yang.moni.category.Category;
 import com.yang.moni.category.CategoryRepository;
+import com.yang.moni.user.User;
+import com.yang.moni.user.UserRepository;
+import com.yang.moni.user.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +26,21 @@ public class LedgerService {
     private final LedgerMemberRepository ledgerMemberRepository;
     private final CategoryRepository categoryRepository;
     private final AssetRepository assetRepository;
+    private final UserRepository userRepository;
+
+    public List<UserResponse> getMembers(Long ledgerId) {
+        List<LedgerMember> members = ledgerMemberRepository.findByLedgerId(ledgerId);
+        Map<Long, String> userNicknames = userRepository.findAllById(
+                members.stream().map(LedgerMember::getUserId).toList()
+        ).stream().collect(Collectors.toMap(User::getUserId, User::getNickname));
+
+        return members.stream()
+                .map(m -> new UserResponse(
+                        m.getUserId(),
+                        m.getNickname() != null ? m.getNickname() : userNicknames.getOrDefault(m.getUserId(), "알 수 없음")
+                ))
+                .toList();
+    }
 
     public List<LedgerResponse> getMyLedgers() {
         List<Long> ledgerIds = ledgerMemberRepository.findByUserId(1L).stream() // TODO: JWT

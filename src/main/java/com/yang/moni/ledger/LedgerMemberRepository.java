@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface LedgerMemberRepository extends JpaRepository<LedgerMember, Long> {
     List<LedgerMember> findByUserId(Long userId);
+    List<LedgerMember> findByLedgerId(Long ledgerId);
     boolean existsByLedgerIdAndUserId(Long ledgerId, Long userId);
     Optional<LedgerMember> findByLedgerIdAndUserId(Long ledgerId, Long userId);
 }

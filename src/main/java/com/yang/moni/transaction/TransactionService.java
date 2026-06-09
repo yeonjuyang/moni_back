@@ -2,6 +2,8 @@ package com.yang.moni.transaction;
 
 import com.yang.moni.category.Category;
 import com.yang.moni.category.CategoryRepository;
+import com.yang.moni.ledger.LedgerMember;
+import com.yang.moni.ledger.LedgerMemberRepository;
 import com.yang.moni.user.User;
 import com.yang.moni.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +23,10 @@ public class TransactionService {
     private final TransactionRecordRepository repository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final LedgerMemberRepository ledgerMemberRepository;
 
     public List<TransactionResponse> getByLedgerId(Long ledgerId) {
-        Map<Long, String> userMap = userRepository.findByActiveTrue().stream()
-                .collect(Collectors.toMap(User::getUserId, User::getNickname));
+        Map<Long, String> userMap = buildNicknameMap(ledgerId);
         return repository.findByLedgerIdOrderByTransactionDateDesc(ledgerId)
                 .stream()
                 .map(t -> toResponse(t, userMap))
@@ -80,11 +82,24 @@ public class TransactionService {
     private TransactionResponse toResponseSingle(TransactionRecord t) {
         String nickname = null;
         if (t.getPaidByUserId() != null) {
-            nickname = userRepository.findById(t.getPaidByUserId())
-                    .map(User::getNickname)
-                    .orElse(null);
+            nickname = ledgerMemberRepository.findByLedgerIdAndUserId(t.getLedgerId(), t.getPaidByUserId())
+                    .map(m -> m.getNickname() != null ? m.getNickname()
+                            : userRepository.findById(t.getPaidByUserId()).map(User::getNickname).orElse(null))
+                    .orElseGet(() -> userRepository.findById(t.getPaidByUserId()).map(User::getNickname).orElse(null));
         }
         return buildResponse(t, nickname);
+    }
+
+    private Map<Long, String> buildNicknameMap(Long ledgerId) {
+        List<LedgerMember> members = ledgerMemberRepository.findByLedgerId(ledgerId);
+        Map<Long, String> userNicknames = userRepository.findAllById(
+                members.stream().map(LedgerMember::getUserId).toList()
+        ).stream().collect(Collectors.toMap(User::getUserId, User::getNickname));
+
+        return members.stream().collect(Collectors.toMap(
+                LedgerMember::getUserId,
+                m -> m.getNickname() != null ? m.getNickname() : userNicknames.getOrDefault(m.getUserId(), "알 수 없음")
+        ));
     }
 
     private TransactionResponse toResponse(TransactionRecord t, Map<Long, String> userMap) {

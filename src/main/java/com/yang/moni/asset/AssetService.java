@@ -1,12 +1,14 @@
 package com.yang.moni.asset;
 
+import com.yang.moni.transaction.TransactionRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -14,12 +16,22 @@ import java.util.ArrayList;
 public class AssetService {
 
     private final AssetRepository assetRepository;
+    private final TransactionRecordRepository transactionRepository;
 
     public List<AssetResponse> getByLedgerId(Long ledgerId) {
-        return assetRepository.findByLedgerIdAndActiveTrueOrderBySortOrderAsc(ledgerId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        List<Asset> assets = assetRepository.findByLedgerIdAndActiveTrueOrderBySortOrderAsc(ledgerId);
+        if (assets.isEmpty()) return List.of();
+
+        List<Long> ids = assets.stream().map(Asset::getAssetId).toList();
+        Map<Long, Long> incomeMap = sumToMap(transactionRepository.sumIncomeGroupByAsset(ids));
+        Map<Long, Long> expenseMap = sumToMap(transactionRepository.sumExpenseGroupByAsset(ids));
+
+        return assets.stream().map(a -> {
+            long current = a.getBalance()
+                    + incomeMap.getOrDefault(a.getAssetId(), 0L)
+                    - expenseMap.getOrDefault(a.getAssetId(), 0L);
+            return new AssetResponse(a.getAssetId(), a.getAssetName(), a.getAssetType(), current, a.getSortOrder());
+        }).toList();
     }
 
     @Transactional
@@ -53,8 +65,15 @@ public class AssetService {
         Asset asset = assetRepository
                 .findByAssetIdAndLedgerIdAndActiveTrue(assetId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Asset not found"));
-        asset.update(request.assetName(), request.assetType(), request.balance());
-        return toResponse(asset);
+
+        // request.balance()는 목표 현재 잔액 → 초기 잔액으로 역산하여 저장
+        List<Long> ids = List.of(assetId);
+        long income = sumToMap(transactionRepository.sumIncomeGroupByAsset(ids)).getOrDefault(assetId, 0L);
+        long expense = sumToMap(transactionRepository.sumExpenseGroupByAsset(ids)).getOrDefault(assetId, 0L);
+        long initialBalance = request.balance() - income + expense;
+
+        asset.update(request.assetName(), request.assetType(), initialBalance);
+        return new AssetResponse(asset.getAssetId(), asset.getAssetName(), asset.getAssetType(), request.balance(), asset.getSortOrder());
     }
 
     @Transactional
@@ -73,5 +92,9 @@ public class AssetService {
                 a.getBalance(),
                 a.getSortOrder()
         );
+    }
+
+    private Map<Long, Long> sumToMap(List<Object[]> rows) {
+        return rows.stream().collect(Collectors.toMap(r -> (Long) r[0], r -> (Long) r[1]));
     }
 }

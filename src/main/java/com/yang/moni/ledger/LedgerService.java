@@ -4,6 +4,7 @@ import com.yang.moni.asset.Asset;
 import com.yang.moni.asset.AssetRepository;
 import com.yang.moni.category.Category;
 import com.yang.moni.category.CategoryRepository;
+import com.yang.moni.security.CurrentUser;
 import com.yang.moni.user.User;
 import com.yang.moni.user.UserRepository;
 import com.yang.moni.user.UserResponse;
@@ -43,7 +44,7 @@ public class LedgerService {
     }
 
     public List<LedgerResponse> getMyLedgers() {
-        List<Long> ledgerIds = ledgerMemberRepository.findByUserId(1L).stream() // TODO: JWT
+        List<Long> ledgerIds = ledgerMemberRepository.findByUserId(CurrentUser.id()).stream()
                 .map(LedgerMember::getLedgerId)
                 .toList();
         return ledgerRepository.findAllById(ledgerIds).stream()
@@ -69,13 +70,13 @@ public class LedgerService {
         Ledger ledger = Ledger.builder()
                 .ledgerName(request.ledgerName())
                 .ledgerType(type)
-                .createdBy(1L) // TODO: JWT
+                .createdBy(CurrentUser.id())
                 .build();
         Ledger saved = ledgerRepository.save(ledger);
 
         ledgerMemberRepository.save(LedgerMember.builder()
                 .ledgerId(saved.getLedgerId())
-                .userId(1L) // TODO: JWT
+                .userId(CurrentUser.id())
                 .role("OWNER")
                 .build());
 
@@ -102,7 +103,7 @@ public class LedgerService {
         Ledger ledger = ledgerRepository.findByInviteCode(inviteCode)
                 .filter(Ledger::isActive)
                 .orElseThrow(() -> new NoSuchElementException("유효하지 않은 초대 코드입니다"));
-        Long userId = 1L; // TODO: JWT
+        Long userId = CurrentUser.id();
         if (!ledgerMemberRepository.existsByLedgerIdAndUserId(ledger.getLedgerId(), userId)) {
             ledgerMemberRepository.save(LedgerMember.builder()
                     .ledgerId(ledger.getLedgerId())
@@ -121,7 +122,7 @@ public class LedgerService {
     @Transactional
     public LedgerResponse updateMyNickname(Long ledgerId, String nickname) {
         LedgerMember member = ledgerMemberRepository
-                .findByLedgerIdAndUserId(ledgerId, 1L) // TODO: JWT
+                .findByLedgerIdAndUserId(ledgerId, CurrentUser.id())
                 .orElseThrow(() -> new NoSuchElementException("가계부 멤버가 아닙니다"));
         member.updateNickname(nickname.isBlank() ? null : nickname.trim());
         return toResponse(findActive(ledgerId));
@@ -129,7 +130,7 @@ public class LedgerService {
 
     private LedgerResponse toResponse(Ledger l) {
         String myNickname = ledgerMemberRepository
-                .findByLedgerIdAndUserId(l.getLedgerId(), 1L) // TODO: JWT
+                .findByLedgerIdAndUserId(l.getLedgerId(), CurrentUser.id())
                 .map(LedgerMember::getNickname)
                 .orElse(null);
         return new LedgerResponse(l.getLedgerId(), l.getLedgerName(), l.getLedgerType(), l.getInviteCode(), myNickname);

@@ -4,6 +4,7 @@ import com.yang.moni.category.Category;
 import com.yang.moni.category.CategoryRepository;
 import com.yang.moni.ledger.LedgerMember;
 import com.yang.moni.ledger.LedgerMemberRepository;
+import com.yang.moni.security.CurrentUser;
 import com.yang.moni.user.User;
 import com.yang.moni.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +36,9 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse createTransaction(Long ledgerId, TransactionRequest request) {
+        Long currentUserId = CurrentUser.id();
         Category category = resolveCategory(ledgerId, request.categoryName());
-        Long paidBy = request.paidByUserId() != null ? request.paidByUserId() : 1L;
+        Long paidBy = request.paidByUserId() != null ? request.paidByUserId() : currentUserId;
 
         TransactionRecord record = TransactionRecord.builder()
                 .ledgerId(ledgerId)
@@ -49,7 +51,7 @@ public class TransactionService {
                 .fromAssetId(request.fromAssetId())
                 .toAssetId(request.toAssetId())
                 .paidByUserId(paidBy)
-                .createdByUserId(1L) // TODO: replace with JWT claim
+                .createdByUserId(currentUserId)
                 .build();
 
         return toResponseSingle(repository.save(record));

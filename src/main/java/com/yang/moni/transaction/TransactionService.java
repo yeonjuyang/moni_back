@@ -2,6 +2,7 @@ package com.yang.moni.transaction;
 
 import com.yang.moni.category.Category;
 import com.yang.moni.category.CategoryRepository;
+import com.yang.moni.ledger.LedgerAccessGuard;
 import com.yang.moni.ledger.LedgerMember;
 import com.yang.moni.ledger.LedgerMemberRepository;
 import com.yang.moni.security.CurrentUser;
@@ -25,8 +26,10 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final LedgerMemberRepository ledgerMemberRepository;
+    private final LedgerAccessGuard accessGuard;
 
     public List<TransactionResponse> getByLedgerId(Long ledgerId) {
+        accessGuard.requireMember(ledgerId);
         Map<Long, String> userMap = buildNicknameMap(ledgerId);
         return repository.findByLedgerIdOrderByTransactionDateDesc(ledgerId)
                 .stream()
@@ -36,8 +39,9 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse createTransaction(Long ledgerId, TransactionRequest request) {
+        accessGuard.requireMember(ledgerId);
         Long currentUserId = CurrentUser.id();
-        Category category = resolveCategory(ledgerId, request.categoryName());
+        Category category = resolveCategory(ledgerId, request.categoryName(), request.transactionType());
         Long paidBy = request.paidByUserId() != null ? request.paidByUserId() : currentUserId;
 
         TransactionRecord record = TransactionRecord.builder()
@@ -59,9 +63,10 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse updateTransaction(Long ledgerId, Long transactionId, TransactionRequest request) {
+        accessGuard.requireMember(ledgerId);
         TransactionRecord record = repository.findByTransactionIdAndLedgerId(transactionId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Transaction not found"));
-        Category category = resolveCategory(ledgerId, request.categoryName());
+        Category category = resolveCategory(ledgerId, request.categoryName(), request.transactionType());
         Long paidBy = request.paidByUserId() != null ? request.paidByUserId() : record.getPaidByUserId();
 
         record.update(request.transactionType(), category, request.amount(), request.memo(),
@@ -71,14 +76,15 @@ public class TransactionService {
 
     @Transactional
     public void deleteTransaction(Long ledgerId, Long transactionId) {
+        accessGuard.requireMember(ledgerId);
         TransactionRecord record = repository.findByTransactionIdAndLedgerId(transactionId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Transaction not found"));
         repository.delete(record);
     }
 
-    private Category resolveCategory(Long ledgerId, String categoryName) {
+    private Category resolveCategory(Long ledgerId, String categoryName, String transactionType) {
         if (categoryName == null) return null;
-        return categoryRepository.findByLedgerIdAndCategoryName(ledgerId, categoryName).orElse(null);
+        return categoryRepository.findByLedgerIdAndCategoryNameAndCategoryType(ledgerId, categoryName, transactionType).orElse(null);
     }
 
     private TransactionResponse toResponseSingle(TransactionRecord t) {

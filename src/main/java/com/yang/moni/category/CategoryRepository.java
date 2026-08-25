@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByLedgerIdAndCategoryName(Long ledgerId, String categoryName);
+    Optional<Category> findByLedgerIdAndCategoryNameAndCategoryType(Long ledgerId, String categoryName, String categoryType);
     List<Category> findByLedgerIdAndActiveTrueOrderBySortOrderAsc(Long ledgerId);
     Optional<Category> findByCategoryIdAndLedgerIdAndActiveTrue(Long categoryId, Long ledgerId);
     long countByLedgerIdAndActiveTrue(Long ledgerId);

@@ -1,5 +1,6 @@
 package com.yang.moni.asset;
 
+import com.yang.moni.ledger.LedgerAccessGuard;
 import com.yang.moni.transaction.TransactionRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,8 +18,10 @@ public class AssetService {
 
     private final AssetRepository assetRepository;
     private final TransactionRecordRepository transactionRepository;
+    private final LedgerAccessGuard accessGuard;
 
     public List<AssetResponse> getByLedgerId(Long ledgerId) {
+        accessGuard.requireMember(ledgerId);
         List<Asset> assets = assetRepository.findByLedgerIdAndActiveTrueOrderBySortOrderAsc(ledgerId);
         if (assets.isEmpty()) return List.of();
 
@@ -36,6 +39,7 @@ public class AssetService {
 
     @Transactional
     public AssetResponse createAsset(Long ledgerId, AssetRequest request) {
+        accessGuard.requireMember(ledgerId);
         int nextOrder = (int) assetRepository.countByLedgerIdAndActiveTrue(ledgerId) + 1;
         Asset asset = Asset.builder()
                 .ledgerId(ledgerId)
@@ -49,6 +53,7 @@ public class AssetService {
 
     @Transactional
     public void reorderAssets(Long ledgerId, List<Long> orderedIds) {
+        accessGuard.requireMember(ledgerId);
         List<Asset> assets = assetRepository.findByLedgerIdAndActiveTrueOrderBySortOrderAsc(ledgerId);
         for (int i = 0; i < orderedIds.size(); i++) {
             final int order = i + 1;
@@ -62,6 +67,7 @@ public class AssetService {
 
     @Transactional
     public AssetResponse updateAsset(Long ledgerId, Long assetId, AssetRequest request) {
+        accessGuard.requireMember(ledgerId);
         Asset asset = assetRepository
                 .findByAssetIdAndLedgerIdAndActiveTrue(assetId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Asset not found"));
@@ -78,6 +84,7 @@ public class AssetService {
 
     @Transactional
     public void deleteAsset(Long ledgerId, Long assetId) {
+        accessGuard.requireMember(ledgerId);
         Asset asset = assetRepository
                 .findByAssetIdAndLedgerIdAndActiveTrue(assetId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Asset not found"));

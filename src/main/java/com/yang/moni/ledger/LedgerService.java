@@ -28,8 +28,10 @@ public class LedgerService {
     private final CategoryRepository categoryRepository;
     private final AssetRepository assetRepository;
     private final UserRepository userRepository;
+    private final LedgerAccessGuard accessGuard;
 
     public List<UserResponse> getMembers(Long ledgerId) {
+        accessGuard.requireMember(ledgerId);
         List<LedgerMember> members = ledgerMemberRepository.findByLedgerId(ledgerId);
         Map<Long, String> userNicknames = userRepository.findAllById(
                 members.stream().map(LedgerMember::getUserId).toList()
@@ -88,7 +90,13 @@ public class LedgerService {
 
     @Transactional
     public void deleteLedger(Long ledgerId) {
-        findActive(ledgerId).deactivate();
+        Ledger ledger = findActive(ledgerId);
+        LedgerMember member = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, CurrentUser.id())
+                .orElseThrow(() -> new NoSuchElementException("Ledger not found: " + ledgerId));
+        if (!"OWNER".equals(member.getRole())) {
+            throw new IllegalStateException("가계부 소유자만 삭제할 수 있습니다");
+        }
+        ledger.deactivate();
     }
 
     @Transactional
@@ -115,8 +123,9 @@ public class LedgerService {
     }
 
     private Ledger findActive(Long ledgerId) {
+        accessGuard.requireMember(ledgerId);
         return ledgerRepository.findById(ledgerId)
-                .orElseThrow(() -> new RuntimeException("Ledger not found: " + ledgerId));
+                .orElseThrow(() -> new NoSuchElementException("Ledger not found: " + ledgerId));
     }
 
     @Transactional

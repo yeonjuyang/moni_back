@@ -17,4 +17,10 @@ public class GlobalExceptionHandler {
         return Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Not found");
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, String> handleIllegalState(IllegalStateException ex) {
+        return Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Forbidden");
+    }
+
 }

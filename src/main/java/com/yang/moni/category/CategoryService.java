@@ -1,5 +1,6 @@
 package com.yang.moni.category;
 
+import com.yang.moni.ledger.LedgerAccessGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,8 +14,10 @@ import java.util.NoSuchElementException;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final LedgerAccessGuard accessGuard;
 
     public List<CategoryResponse> getByLedgerId(Long ledgerId) {
+        accessGuard.requireMember(ledgerId);
         return categoryRepository.findByLedgerIdAndActiveTrueOrderBySortOrderAsc(ledgerId)
                 .stream()
                 .map(this::toResponse)
@@ -23,6 +26,7 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse createCategory(Long ledgerId, CategoryRequest request) {
+        accessGuard.requireMember(ledgerId);
         int nextOrder = (int) categoryRepository.countByLedgerIdAndActiveTrue(ledgerId) + 1;
 
         Category category = Category.builder()
@@ -39,6 +43,7 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse updateCategory(Long ledgerId, Long categoryId, CategoryRequest request) {
+        accessGuard.requireMember(ledgerId);
         Category category = categoryRepository
                 .findByCategoryIdAndLedgerIdAndActiveTrue(categoryId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Category not found"));
@@ -49,6 +54,7 @@ public class CategoryService {
 
     @Transactional
     public void deleteCategory(Long ledgerId, Long categoryId) {
+        accessGuard.requireMember(ledgerId);
         Category category = categoryRepository
                 .findByCategoryIdAndLedgerIdAndActiveTrue(categoryId, ledgerId)
                 .orElseThrow(() -> new NoSuchElementException("Category not found"));

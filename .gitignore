@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Secrets (실제 키는 여기에만, git에 올리지 말 것) ###
+application-secrets.properties

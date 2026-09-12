@@ -4,11 +4,17 @@ import com.yang.moni.security.JwtTokenProvider;
 import com.yang.moni.user.User;
 import com.yang.moni.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -43,5 +49,22 @@ public class AuthController {
     @PostMapping("/naver")
     public AuthResponse naverLogin(@RequestParam String code) {
         return authService.loginWithNaver(code);
+    }
+
+    // 네이버 개발자센터에는 http(s) URL만 콜백으로 등록 가능하므로,
+    // 이 엔드포인트가 그 콜백을 받아 앱의 커스텀 스킴(moni://naver_callback)으로 다시 리다이렉트한다.
+    @GetMapping("/naver/callback")
+    public ResponseEntity<Void> naverCallback(
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error) {
+        UriComponentsBuilder redirect = UriComponentsBuilder.fromUriString("moni://naver_callback");
+        if (code != null) redirect.queryParam("code", code);
+        if (state != null) redirect.queryParam("state", state);
+        if (error != null) redirect.queryParam("error", error);
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(redirect.build().encode().toUriString()))
+                .build();
     }
 }
